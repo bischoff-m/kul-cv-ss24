@@ -107,31 +107,28 @@ def effect_grab_object(frame: np.ndarray, now: float, frame_idx: int) -> np.ndar
     mask_bgr = cv2.inRange(frame, lower_bgr, upper_bgr)
 
     # Set HSV range
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     lower_hsv = np.array([150, 20, 20])
     upper_hsv = np.array([180, 255, 255])
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     mask_hsv = cv2.inRange(hsv, lower_hsv, upper_hsv)
 
     # Combine masks
-    result = cv2.bitwise_and(frame, frame, mask=mask_bgr)
-    result = cv2.bitwise_and(result, result, mask=mask_hsv)
+    mask = cv2.bitwise_and(mask_bgr, mask_hsv)
+    result = cv2.bitwise_and(frame, frame, mask=mask)
 
     # Convert to binary
     result = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
     _, result = cv2.threshold(result, 1, 255, cv2.THRESH_BINARY)
 
-    if now >= 16:
+    if now >= 12:
         # Apply morphological transformations
         kernel = np.ones((5, 5), np.uint8)
-        result = cv2.morphologyEx(result, cv2.MORPH_OPEN, kernel)
-        result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel)
+        result_morph = cv2.morphologyEx(result, cv2.MORPH_OPEN, kernel)
+        result_morph = cv2.morphologyEx(result_morph, cv2.MORPH_CLOSE, kernel)
 
-        # Compare to only BGR and HSV mask and color improvements red
-        result = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
-        result[mask_bgr > 0] = [0, 0, 255]
-        result[mask_hsv > 0] = [0, 255, 0]
-        # TODO: Revise this part
-        # TODO: Print what the colors mean
+        # Color added pixels red and removed pixels green
+        result = cv2.cvtColor(result_morph, cv2.COLOR_GRAY2BGR)
+        result[mask > 0] = [0, 255, 0]
 
     return (
         result,
@@ -139,7 +136,7 @@ def effect_grab_object(frame: np.ndarray, now: float, frame_idx: int) -> np.ndar
         Frame: {frame_idx}
         BGR range: {lower_bgr} - {upper_bgr}
         HSV range: {lower_hsv} - {upper_hsv}
-        {f"Morphological transformations applied" if now >= 16 else ""}
+        {f"Morphological transformations applied" if now >= 12 else ""}
         """,
     )
 
